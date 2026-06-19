@@ -65,7 +65,7 @@ export default function HistoricalImportPage() {
     }
 
     try {
-      const { start_time, end_time, ...restForm } = manualForm
+      const { start_time, end_time, group_ids, ...restForm } = manualForm
       const payload = {
         ...restForm,
         start_date: toISOString(manualForm.start_date, manualForm.start_time),
@@ -74,7 +74,7 @@ export default function HistoricalImportPage() {
         is_historical: true,
         attendees_count: parseInt(manualForm.attendees_count || 0) || null,
       }
-      await eventService.create(payload, manualForm.group_ids)
+      await eventService.create(payload, group_ids)
       toast.success('Evento histórico registrado')
       setManualForm({
         title: '', description: '', event_type: 'clase_sabatina',

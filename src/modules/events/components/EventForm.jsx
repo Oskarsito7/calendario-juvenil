@@ -42,6 +42,8 @@ export default function EventForm({ initialData, groups, onSubmit, onCancel, isL
         end_date: initialData.end_date ? extractDate(initialData.end_date) : '',
         start_time: initialData.start_date ? extractTime(initialData.start_date) : '09:00',
         end_time: initialData.end_date ? extractTime(initialData.end_date) : '11:00',
+        // Asegurar que attendees_count nunca sea null (siempre número para el input)
+        attendees_count: initialData.attendees_count ?? 0,
       })
       setSelectedGroups(initialData.groups?.map(g => g.id) || [])
       setCoverPreview(initialData.cover_image_url || '')

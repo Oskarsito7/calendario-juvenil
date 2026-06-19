@@ -33,16 +33,38 @@ export default function UsersPage() {
   }
 
   async function updateRole(userId, newRole) {
+    // Actualización optimista: cambiar UI inmediatamente
+    setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole } : p))
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .update({ role: newRole })
         .eq('id', userId)
-      if (error) throw error
-      toast.success('Rol actualizado')
-      loadProfiles()
+        .select('id, role') // pedir el dato de vuelta para confirmar
+
+      if (error) {
+        console.error('Error update role:', error)
+        throw new Error(error.message || 'Error actualizando rol')
+      }
+
+      if (!data || data.length === 0) {
+        console.warn('No rows returned from update — possible RLS blocking')
+        toast.error('No se pudo actualizar el rol. ¿RLS habilitado sin policy de UPDATE?')
+        await loadProfiles()
+        return
+      }
+
+      console.log('Role updated, server returned:', data)
+      toast.success('Rol actualizado correctamente')
+
+      // Recargar la lista para asegurar sincronización
+      await loadProfiles()
     } catch (err) {
-      toast.error('Error actualizando rol')
+      console.error('Catch error:', err)
+      toast.error(err.message || 'Error actualizando rol')
+      // Revertir a los datos reales si falló
+      await loadProfiles()
     }
   }
 
