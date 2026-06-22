@@ -1,10 +1,33 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom'
-import { CalendarDays, LogIn, Heart, Camera, Globe, Mail } from 'lucide-react'
-import { useState } from 'react'
+import { CalendarDays, LogIn, Heart, Camera, Globe, Mail, User, LogOut, ChevronDown, Shield } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { useAuth } from '../hooks/useAuth.js'
 
 export default function PublicLayout() {
+  const { user, profile, isAdmin, signOut } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef(null)
   const navigate = useNavigate()
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleLogout = async () => {
+    await signOut()
+    setUserMenuOpen(false)
+    navigate('/')
+  }
+
+  const isLoggedIn = !!user
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 to-slate-100">
@@ -36,15 +59,81 @@ export default function PublicLayout() {
                 >
                   Calendario
                 </button>
+                {isLoggedIn && (
+                  <button
+                    onClick={() => navigate('/perfil')}
+                    className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
+                  >
+                    Mi perfil
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={() => navigate('/admin')}
+                    className="px-3 py-2 text-sm font-medium text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
+                  >
+                    <Shield size={14} className="inline mr-1" />
+                    Admin
+                  </button>
+                )}
               </nav>
               <div className="h-4 w-px bg-slate-200" />
-              <Link
-                to="/login"
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md shadow-blue-600/20 hover:shadow-blue-600/30"
-              >
-                <LogIn size={16} />
-                Acceder
-              </Link>
+              
+              {isLoggedIn ? (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+                      {profile?.full_name?.[0] || user?.email?.[0] || 'U'}
+                    </div>
+                    <span className="text-sm font-medium text-slate-700 max-w-[100px] truncate">
+                      {profile?.full_name || 'Usuario'}
+                    </span>
+                    <ChevronDown size={14} className={`text-slate-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {userMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl border border-slate-200 shadow-xl py-1 z-50">
+                      <div className="px-4 py-2 border-b border-slate-100">
+                        <p className="text-sm font-medium text-slate-800">{profile?.full_name}</p>
+                        <p className="text-xs text-slate-500 capitalize">{profile?.role}</p>
+                      </div>
+                      <button
+                        onClick={() => { navigate('/perfil'); setUserMenuOpen(false); }}
+                        className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors flex items-center gap-2"
+                      >
+                        <User size={14} /> Mi perfil
+                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => { navigate('/admin'); setUserMenuOpen(false); }}
+                          className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors flex items-center gap-2"
+                        >
+                          <Shield size={14} /> Panel admin
+                        </button>
+                      )}
+                      <div className="border-t border-slate-100 mt-1 pt-1">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                        >
+                          <LogOut size={14} /> Cerrar sesión
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md shadow-blue-600/20 hover:shadow-blue-600/30"
+                >
+                  <LogIn size={16} />
+                  Acceder
+                </Link>
+              )}
             </div>
 
             {/* Mobile hamburger */}
@@ -73,13 +162,38 @@ export default function PublicLayout() {
               >
                 Calendario
               </button>
-              <Link
-                to="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
-              >
-                <LogIn size={16} /> Acceder al sistema
-              </Link>
+              {isLoggedIn && (
+                <button
+                  onClick={() => { navigate('/perfil'); setMobileMenuOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-sm font-medium text-slate-600 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-all flex items-center gap-2"
+                >
+                  <User size={16} /> Mi perfil
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => { navigate('/admin'); setMobileMenuOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-sm font-medium text-blue-600 rounded-lg hover:bg-blue-50 transition-all flex items-center gap-2"
+                >
+                  <Shield size={16} /> Panel admin
+                </button>
+              )}
+              {isLoggedIn ? (
+                <button
+                  onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-all flex items-center gap-2"
+                >
+                  <LogOut size={16} /> Cerrar sesión
+                </button>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 rounded-lg hover:bg-blue-50 transition-all"
+                >
+                  <LogIn size={16} /> Acceder al sistema
+                </Link>
+              )}
             </div>
           </div>
         )}

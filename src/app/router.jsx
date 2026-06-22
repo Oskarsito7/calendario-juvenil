@@ -10,6 +10,7 @@ import RegisterPage from '../pages/auth/RegisterPage.jsx'
 
 import PublicCalendarPage from '../pages/public/PublicCalendarPage.jsx'
 import EventDetailPage from '../pages/public/EventDetailPage.jsx'
+import ProfilePage from '../pages/public/ProfilePage.jsx'
 
 import DashboardPage from '../pages/admin/DashboardPage.jsx'
 import CalendarPage from '../pages/admin/CalendarPage.jsx'
@@ -44,6 +45,7 @@ export default function AppRouter() {
       children: [
         { index: true, element: <PublicCalendarPage /> },
         { path: 'evento/:id', element: <EventDetailPage /> },
+        { path: 'perfil', element: <RequireAuth><ProfilePage /></RequireAuth> },
       ],
     },
     {

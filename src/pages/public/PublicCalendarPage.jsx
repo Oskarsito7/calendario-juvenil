@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth.js'
 import { Button } from '../../components/ui/Button.jsx'
 import { Badge } from '../../components/ui/Badge.jsx'
 import { Loading } from '../../components/ui/Loading.jsx'
@@ -10,17 +11,20 @@ import GroupFilters from '../../modules/calendar/components/GroupFilters.jsx'
 import EventLegend from '../../modules/calendar/components/EventLegend.jsx'
 import { useCalendar } from '../../stores/calendarStore.jsx'
 import { eventService } from '../../services/eventService.js'
+import { downloadCalendarPdf } from '../../utils/pdfGenerator.js'
 import { formatDate } from '../../utils/dateUtils.js'
 import { MONTHS, GROUPS } from '../../utils/constants.js'
 import toast from 'react-hot-toast'
-import { Share2, Download, CalendarDays, Sparkles, ChevronRight } from 'lucide-react'
+import { Share2, Download, CalendarDays, Sparkles, Calendar } from 'lucide-react'
 
 export default function PublicCalendarPage() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedEvent, setSelectedEvent] = useState(null)
+  const [downloading, setDownloading] = useState(false)
   const { selectedGroups } = useCalendar()
-  const navigate = useNavigate()
 
   useEffect(() => {
     loadEvents()
@@ -69,71 +73,85 @@ export default function PublicCalendarPage() {
     toast.success('¡Enlace copiado al portapapeles!')
   }
 
-  const handleDownload = () => {
-    navigate('/login')
-    toast('Inicia sesión para descargar reportes', { icon: 'ℹ️' })
+  const handleDownloadCalendar = async () => {
+    if (!user) {
+      toast.error('Inicia sesión para descargar el calendario')
+      navigate('/login')
+      return
+    }
+    const now = new Date()
+    try {
+      setDownloading(true)
+      await downloadCalendarPdf(now.getFullYear(), now.getMonth() + 1)
+      toast.success('¡Calendario descargado!')
+    } catch (err) {
+      toast.error('Error descargando calendario')
+    } finally {
+      setDownloading(false)
+    }
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 text-white p-8 sm:p-10 shadow-2xl">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      {/* Hero Section — más compacto en móvil */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 text-white p-5 sm:p-8 lg:p-10 shadow-2xl">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 right-0 w-72 h-72 bg-blue-400 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
-          <div className="absolute bottom-0 left-0 w-56 h-56 bg-indigo-400 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4" />
+          <div className="absolute top-0 right-0 w-48 h-48 sm:w-72 sm:h-72 bg-blue-400 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 sm:w-56 sm:h-56 bg-indigo-400 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4" />
         </div>
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-blue-300 text-sm font-medium">
-              <Sparkles size={16} />
+        <div className="relative z-10 flex flex-col gap-4">
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex items-center gap-2 text-blue-300 text-xs sm:text-sm font-medium">
+              <Sparkles size={14} className="sm:size-16" />
               <span>Bienvenidos al ministerio</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">
               Calendario de Actividades
             </h1>
-            <p className="text-slate-300 text-base max-w-lg">
+            <p className="text-slate-300 text-sm sm:text-base max-w-lg leading-relaxed">
               Descubre todas las actividades, clases, salidas y reuniones de nuestro ministerio juvenil. ¡Te esperamos!
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
               onClick={handleShare}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium hover:bg-white/20 transition-all"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs sm:text-sm font-medium hover:bg-white/20 transition-all"
             >
-              <Share2 size={16} />
+              <Share2 size={14} className="sm:size-16" />
               Compartir
             </button>
             <button
-              onClick={handleDownload}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-slate-900 text-sm font-medium hover:bg-blue-50 transition-all shadow-lg"
+              onClick={handleDownloadCalendar}
+              disabled={downloading}
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white text-slate-900 text-xs sm:text-sm font-medium hover:bg-blue-50 transition-all shadow-lg disabled:opacity-60"
             >
-              <Download size={16} />
-              Descargar PDF
+              <Download size={14} className="sm:size-16" />
+              {downloading ? 'Descargando...' : 'Descargar PDF'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Próximos eventos strip */}
+      {/* Próximos eventos strip — scroll horizontal en móvil */}
       {upcomingEvents.length > 0 && (
         <div className="animate-fade-in">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <div className="w-1 h-5 rounded-full bg-blue-500" />
-            <h2 className="text-lg font-semibold text-slate-800">Próximos eventos</h2>
-            <span className="text-sm text-slate-400 ml-2">{upcomingEvents.length} programados</span>
+            <h2 className="text-base sm:text-lg font-semibold text-slate-800">Próximos eventos</h2>
+            <span className="text-xs sm:text-sm text-slate-400 ml-2">{upcomingEvents.length} programados</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {upcomingEvents.map((ev, i) => {
+          <div className="flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible">
+            {upcomingEvents.map((ev) => {
               const firstGroup = ev.groups?.[0]
               return (
                 <div
                   key={ev.id}
                   onClick={() => setSelectedEvent(ev)}
-                  className="group cursor-pointer bg-white rounded-xl border border-slate-200 p-4 hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-0.5"
+                  className="group cursor-pointer bg-white rounded-xl border border-slate-200 p-4 hover:shadow-lg hover:border-blue-200 transition-all hover:-translate-y-0.5 min-w-[260px] sm:min-w-0"
                 >
                   <div className="flex items-start gap-3">
                     <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white shrink-0 text-sm font-bold shadow-sm"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center text-white shrink-0 text-sm sm:text-base font-bold shadow-sm"
                       style={{ backgroundColor: firstGroup?.color || '#94a3b8' }}
                     >
                       {new Date(ev.start_date).getDate()}
@@ -151,7 +169,7 @@ export default function PublicCalendarPage() {
                             style={{ backgroundColor: g.color }}
                           />
                         ))}
-                        <span className="text-[10px] text-slate-400 ml-1">
+                        <span className="text-[10px] text-slate-400 ml-1 truncate">
                           {(ev.groups || []).map(g => g.name).join(', ')}
                         </span>
                       </div>
@@ -165,38 +183,36 @@ export default function PublicCalendarPage() {
       )}
 
       {/* Controles del calendario */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 sm:p-6 space-y-5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
+        <div className="flex flex-col gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              <CalendarDays className="text-blue-500" size={20} />
+            <h2 className="text-base sm:text-lg font-semibold text-slate-800 flex items-center gap-2">
+              <CalendarDays className="text-blue-500" size={18} />
               {MONTHS[new Date().getMonth()]} {new Date().getFullYear()}
             </h2>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
               Selecciona los grupos que quieres ver en el calendario
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="overflow-x-auto pb-1">
             <GroupFilters />
           </div>
         </div>
-
         <div className="h-px bg-slate-100" />
-
         <EventLegend />
       </div>
 
       {/* Calendario */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex h-96 items-center justify-center">
+          <div className="flex h-64 sm:h-96 items-center justify-center">
             <div className="text-center space-y-3">
               <Loading size="lg" />
               <p className="text-sm text-slate-400">Cargando actividades...</p>
             </div>
           </div>
         ) : (
-          <div className="p-4 sm:p-6">
+          <div className="p-2 sm:p-4 lg:p-6">
             <CalendarView
               events={calendarEvents}
               onEventClick={(info) => {

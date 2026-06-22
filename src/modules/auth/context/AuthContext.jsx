@@ -54,7 +54,22 @@ export function AuthProvider({ children }) {
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
-    return data
+
+    // Obtener perfil inmediatamente después de login
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single()
+
+    if (profileError) {
+      console.error('Error fetching profile after login:', profileError)
+    } else {
+      setProfile(profileData)
+      setUser(profileData)
+    }
+
+    return { ...data, profile: profileData }
   }
 
   const signUp = async (email, password, fullName) => {

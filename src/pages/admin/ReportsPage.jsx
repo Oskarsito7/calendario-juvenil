@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardHeader } from '../../components/ui/Card.jsx'
 import { Button } from '../../components/ui/Button.jsx'
 import { Loading } from '../../components/ui/Loading.jsx'
-import { Modal } from '../../components/ui/Modal.jsx'
 import { Select } from '../../components/ui/Select.jsx'
-import { eventService, groupService } from '../../services/eventService.js'
+import { eventService } from '../../services/eventService.js'
 import { formatDate, getMonthRange } from '../../utils/dateUtils.js'
+import { downloadCalendarPdf } from '../../utils/pdfGenerator.js'
 import { MONTHS, GROUPS, EVENT_TYPES } from '../../utils/constants.js'
 import toast from 'react-hot-toast'
 import { FileText, Download, Calendar } from 'lucide-react'
@@ -49,7 +49,6 @@ export default function ReportsPage() {
   }
 
   function handleDownload() {
-    // For now, generate a simple text/HTML report
     if (!previewData) return
     const { events, month, year } = previewData
     const title = `Reporte ${MONTHS[month - 1]} ${year}`
@@ -90,7 +89,7 @@ export default function ReportsPage() {
     })
 
     html += `</table>
-      <div class="footer">Generado el ${formatDate(new Date())} · Calendario Juvenil</div>
+      <div class="footer">Generado el ${formatDate(new Date())} · Calendario Juvenil Bethel</div>
       </body></html>`
 
     const blob = new Blob([html], { type: 'text/html' })
@@ -103,82 +102,13 @@ export default function ReportsPage() {
     toast.success('Reporte descargado')
   }
 
-  async function generateCalendarPdf() {
+  async function handleDownloadCalendar() {
     try {
       setLoading(true)
-      const { start, end } = getMonthRange(year, month)
-      const events = await eventService.getAll({
-        start_date: start.toISOString(),
-        end_date: end.toISOString(),
-      })
-
-      const title = `Calendario ${MONTHS[month - 1]} ${year}`
-      const daysInMonth = new Date(year, month, 0).getDate()
-      const firstDay = new Date(year, month - 1, 1).getDay()
-
-      let html = `
-        <html><head><meta charset="utf-8"><title>${title}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 30px; color: #333; }
-          h1 { text-align: center; color: #1e293b; margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; }
-          th { background: #f8fafc; padding: 10px; text-align: center; font-size: 12px; border: 1px solid #e2e8f0; }
-          td { width: 14.28%; height: 80px; vertical-align: top; padding: 8px; border: 1px solid #e2e8f0; font-size: 12px; }
-          .day-num { font-weight: bold; color: #64748b; margin-bottom: 4px; }
-          .event { padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 10px; color: white; }
-          .footer { margin-top: 20px; font-size: 10px; color: #94a3b8; text-align: center; }
-          .legend { display: flex; gap: 12px; justify-content: center; margin-top: 10px; font-size: 11px; }
-          .legend-item { display: flex; align-items: center; gap: 4px; }
-          .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
-        </style></head><body>
-        <h1>Calendario Juvenil Bethel<br><span style="font-size:18px">${MONTHS[month - 1]} ${year}</span></h1>
-        <table>
-          <tr><th>Dom</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th></tr>
-          <tr>
-      `
-
-      let day = 1
-      for (let i = 0; i < 42; i++) {
-        if (i < firstDay || day > daysInMonth) {
-          html += '<td></td>'
-        } else {
-          const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-          const dayEvents = events.filter(e => {
-            if (!e.start_date) return false
-            const d = new Date(e.start_date)
-            const evYear = d.getFullYear()
-            const evMonth = String(d.getMonth() + 1).padStart(2, '0')
-            const evDay = String(d.getDate()).padStart(2, '0')
-            return `${evYear}-${evMonth}-${evDay}` === dateStr
-          })
-          html += `<td><div class="day-num">${day}</div>`
-          dayEvents.forEach(ev => {
-            const color = ev.groups?.[0]?.color || '#94a3b8'
-            html += `<div class="event" style="background:${color}">${ev.title}</div>`
-          })
-          html += '</td>'
-          day++
-        }
-        if ((i + 1) % 7 === 0 && i < 41) html += '</tr><tr>'
-      }
-
-      html += `</tr></table>
-        <div class="legend">
-          ${GROUPS.map(g => `<div class="legend-item"><span class="legend-dot" style="background:${g.color}"></span>${g.name}</div>`).join('')}
-        </div>
-        <div class="footer">Calendario Juvenil Bethel · Ministerio de Jóvenes</div>
-        </body></html>`
-
-      const blob = new Blob([html], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `calendario-${MONTHS[month - 1].toLowerCase()}-${year}.html`
-      a.click()
-      URL.revokeObjectURL(url)
+      await downloadCalendarPdf(year, month)
       toast.success('Calendario descargado')
     } catch (err) {
-      toast.error('Error generando calendario')
+      toast.error('Error descargando calendario')
     } finally {
       setLoading(false)
     }
@@ -188,7 +118,7 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Reportes</h1>
-        <p className="text-sm text-slate-500">Genera reportes y calendarios en PDF</p>
+        <p className="text-sm text-slate-500">Genera reportes y calendarios</p>
       </div>
 
       <div className="flex gap-2 border-b border-slate-200">
@@ -243,7 +173,7 @@ export default function ReportsPage() {
           )}
         </div>
         <div className="mt-4">
-          <Button onClick={activeTab === 'monthly' ? generateReport : generateCalendarPdf} disabled={loading}>
+          <Button onClick={activeTab === 'monthly' ? generateReport : handleDownloadCalendar} disabled={loading}>
             {loading ? <Loading size="sm" /> : <Download size={16} className="mr-2" />}
             {activeTab === 'monthly' ? 'Generar reporte' : 'Descargar calendario'}
           </Button>

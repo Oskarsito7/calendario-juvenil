@@ -16,9 +16,17 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      await signIn(email, password)
-      toast.success('¡Bienvenido!')
-      window.location.href = '/admin'
+      const { profile } = await signIn(email, password)
+      const welcomeMsg = profile?.full_name
+        ? `¡Hola, ${profile.full_name}! 👋`
+        : '¡Bienvenido! 👋'
+      toast.success(welcomeMsg, { duration: 3000 })
+      // Redirigir según el rol
+      if (profile?.role === 'director' || profile?.role === 'subdirector') {
+        window.location.href = '/admin'
+      } else {
+        window.location.href = '/perfil'
+      }
     } catch (err) {
       toast.error(err.message || 'Error al iniciar sesión')
     } finally {
